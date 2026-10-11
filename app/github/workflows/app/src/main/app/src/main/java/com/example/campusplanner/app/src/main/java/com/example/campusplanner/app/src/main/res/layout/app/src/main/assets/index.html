@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>校园助手</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+:root {
+  --bg:#FFF8E7; --card:#FFF; --primary:#FF9F43; --accent:#6C5CE7;
+  --green:#2ECC71; --red:#FF6B6B; --text:#2D3436; --light:#636E72; --border:#FFE0B2;
+}
+body { font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif; background:var(--bg); color:var(--text); padding-bottom:70px; min-height:100vh; user-select:none; }
+.header { background:linear-gradient(135deg,#FF9F43,#FF6B6B); color:#fff; padding:20px 16px 16px; text-align:center; border-radius:0 0 20px 20px; }
+.header h1 { font-size:22px; }
+.header .info { font-size:13px; opacity:.9; margin-top:4px; }
+.page { display:none; padding:16px; }
+.page.active { display:block; }
+.card { background:var(--card); border-radius:16px; padding:16px; margin-bottom:14px; box-shadow:0 2px 8px rgba(0,0,0,.06); }
+.card h2 { font-size:16px; margin-bottom:12px; }
+input,select { width:100%; padding:10px 12px; border:2px solid var(--border); border-radius:10px; font-size:14px; background:#FFFDF7; margin-bottom:8px; outline:none; }
+input:focus,select:focus { border-color:var(--primary); }
+.btn { display:block; width:100%; padding:12px; background:linear-gradient(135deg,#FF9F43,#FF6B6B); color:#fff; border:none; border-radius:12px; font-size:15px; font-weight:bold; cursor:pointer; }
+.btn.secondary { background:#fff; color:var(--primary); border:2px solid var(--primary); }
+.week-selector { display:flex; gap:6px; overflow-x:auto; margin-bottom:12px; }
+.week-selector button { flex-shrink:0; padding:6px 14px; border:2px solid var(--border); background:#fff; border-radius:20px; font-size:13px; color:var(--light); }
+.week-selector button.active { background:var(--primary); color:#fff; border-color:var(--primary); }
+.class-item { padding:12px; border-radius:12px; margin-bottom:8px; border-left:4px solid var(--primary); background:#FFF4E0; }
+.class-item .name { font-weight:bold; font-size:15px; }
+.class-item .meta { font-size:12px; color:var(--light); margin-top:4px; }
+.class-item .del { float:right; color:var(--red); font-size:12px; cursor:pointer; }
+.todo-item { display:flex; align-items:center; padding:10px 0; border-bottom:1px dashed var(--border); }
+.todo-check { width:22px; height:22px; border:2px solid var(--primary); border-radius:6px; margin-right:10px; cursor:pointer; display:flex; align-items:center; justify-content:center; font-size:14px; color:#fff; flex-shrink:0; }
+.todo-item.done .todo-check { background:var(--green); border-color:var(--green); }
+.todo-item.done .todo-text { text-decoration:line-through; color:#aaa; }
+.todo-text { flex:1; font-size:14px; }
+.todo-del { color:var(--red); cursor:pointer; font-size:18px; margin-left:8px; }
+.fitness-part { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-bottom:12px; }
+.fitness-part button { padding:10px; border:2px solid var(--border); background:#fff; border-radius:10px; font-size:13px; }
+.fitness-part button.active { background:var(--accent); color:#fff; border-color:var(--accent); }
+.fitness-record { background:#F0EDFF; padding:10px 12px; border-radius:10px; margin-bottom:8px; font-size:13px; }
+.fitness-record .date { color:var(--accent); font-weight:bold; }
+.my-row { display:flex; justify-content:space-between; align-items:center; padding:14px 0; border-bottom:1px solid #f0f0f0; font-size:14px; }
+.tab-bar { position:fixed; bottom:0; left:0; right:0; background:#fff; display:flex; border-top:1px solid #eee; z-index:100; }
+.tab-bar button { flex:1; padding:10px 0; background:none; border:none; font-size:11px; color:var(--light); cursor:pointer; }
+.tab-bar button.active { color:var(--primary); font-weight:bold; }
+.tab-bar .icon { font-size:22px; display:block; margin-bottom:2px; }
+.modal-mask { position:fixed; inset:0; background:rgba(0,0,0,.4); z-index:1000; display:none; align-items:flex-end; }
+.modal-mask.show { display:flex; }
+.modal { background:#fff; width:100%; border-radius:20px 20px 0 0; padding:20px 16px; max-height:80vh; overflow-y:auto; }
+.modal h3 { margin-bottom:14px; text-align:center; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>📚 校园助手</h1>
+  <div class="info" id="weekInfo">第1周</div>
+</div>
+
+<div class="page active" id="page-schedule">
+  <div class="card">
+    <h2>📅 本周课表</h2>
+    <div class="week-selector" id="daySelector"></div>
+    <div id="classList"></div>
+    <button class="btn" onclick="openModal()">+ 添加课程</button>
+  </div>
+  <div class="card">
+    <h2>⚙️ 当前周数</h2>
+    <div style="display:flex;gap:8px;align-items:center;">
+      <button onclick="changeWeek(-1)" style="width:40px;height:40px;border-radius:50%;border:2px solid var(--primary);background:#fff;font-size:18px;">-</button>
+      <div style="flex:1;text-align:center;font-size:18px;font-weight:bold;" id="weekNum">第1周</div>
+      <button onclick="changeWeek(1)" style="width:40px;height:40px;border-radius:50%;border:2px solid var(--primary);background:#fff;font-size:18px;">+</button>
+    </div>
+  </div>
+</div>
+
+<div class="page" id="page-todo">
+  <div class="card">
+    <h2>✅ 待办事项</h2>
+    <div style="display:flex;gap:8px;margin-bottom:12px;">
+      <input type="text" id="todoInput" placeholder="要做什么？" style="margin-bottom:0;flex:1;">
+      <button class="btn" style="width:80px;" onclick="addTodo()">添加</button>
+    </div>
+    <div id="todoList"></div>
+  </div>
+</div>
+
+<div class="page" id="page-fitness">
+  <div class="card">
+    <h2>💪 今日训练</h2>
+    <div class="fitness-part" id="partSelector">
+      <button data-part="胸">胸</button><button data-part="背">背</button><button data-part="腿">腿</button>
+      <button data-part="肩">肩</button><button data-part="手臂">手臂</button><button data-part="有氧">有氧</button>
+    </div>
+    <input type="number" id="setInput" placeholder="组数（如4）" min="1">
+    <input type="text" id="noteInput" placeholder="备注（如 卧推60kg）">
+    <button class="btn" onclick="addFitness()">记录训练</button>
+  </div>
+  <div class="card">
+    <h2>📖 训练历史</h2>
+    <div id="fitnessList"></div>
+  </div>
+</div>
+
+<div class="page" id="page-my">
+  <div class="card">
+    <h2>🐣 悬浮桌宠</h2>
+    <div class="my-row"><span>开启全局悬浮小人</span></div>
+    <div style="display:flex;gap:8px;margin-top:8px;">
+      <button class="btn" onclick="startPet()">开启桌宠</button>
+      <button class="btn secondary" onclick="stopPet()">关闭桌宠</button>
+    </div>
+    <p style="font-size:12px;color:var(--light);margin-top:8px;">开启后退到手机桌面就能看到小人，可拖动位置，点击会说话。</p >
+  </div>
+  <div class="card">
+    <h2>📊 我的数据</h2>
+    <div class="my-row"><span>课程数</span><span id="statClass">0</span></div>
+    <div class="my-row"><span>待办完成</span><span id="statTodo">0</span></div>
+    <div class="my-row"><span>训练记录</span><span id="statFitness">0次</span></div>
+  </div>
+</div>
+
+<div class="tab-bar">
+  <button class="active" onclick="switchPage('schedule',this)"><span class="icon">📅</span>课表</button>
+  <button onclick="switchPage('todo',this)"><span class="icon">✅</span>待办</button>
+  <button onclick="switchPage('fitness',this)"><span class="icon">💪</span>健身</button>
+  <button onclick="switchPage('my',this)"><span class="icon">🐣</span>我的</button>
+</div>
+
+<div class="modal-mask" id="classModal">
+  <div class="modal">
+    <h3>添加课程</h3>
+    <input type="text" id="clsName" placeholder="课程名（如 高等数学）">
+    <input type="text" id="clsLocation" placeholder="地点（如 教学楼A301）">
+    <select id="clsDay">
+      <option value="1">周一</option><option value="2">周二</option><option value="3">周三</option>
+      <option value="4">周四</option><option value="5">周五</option><option value="6">周六</option><option value="7">周日</option>
+    </select>
+    <div style="display:flex;gap:8px;">
+      <input type="number" id="clsStart" placeholder="开始节次" min="1" max="12" style="flex:1;">
+      <input type="number" id="clsEnd" placeholder="结束节次" min="1" max="12" style="flex:1;">
+    </div>
+    <button class="btn" onclick="saveClass()">保存课程</button>
+    <button class="btn secondary" style="margin-top:8px;" onclick="closeModal()">取消</button>
+  </div>
+</div>
+
+<script>
+const DB = {
+  get(k,d){ try{return JSON.parse(localStorage.getItem('cp_'+k))??d}catch(e){return d} },
+  set(k,v){ localStorage.setItem('cp_'+k,JSON.stringify(v)) }
+};
+let S = {
+  week:DB.get('week',1), day:new Date().getDay()||7,
+  classes:DB.get('classes',[]), todos:DB.get('todos',[]), fitness:DB.get('fitness',[])
+};
+function save(){ DB.set('classes',S.classes);DB.set('todos',S.todos);DB.set('fitness',S.fitness);DB.set('week',S.week); }
+function switchPage(n,b){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.getElementById('page-'+n).classList.add('active');
+  document.querySelectorAll('.tab-bar button').forEach(x=>x.classList.remove('active'));
+  b.classList.add('active');
+}
+const dn=['','周一','周二','周三','周四','周五','周六','周日'];
+function renderTop(){
+  document.getElementById('weekInfo').textContent='第'+S.week+'周 · '+dn[S.day];
+  document.getElementById('weekNum').textContent='第'+S.week+'周';
+}
+function renderDays(){
+  const el=document.getElementById('daySelector'); el.innerHTML='';
+  for(let d=1;d<=7;d++){
+    const b=document.createElement('button');
+    b.textContent=d===S.day?dn[d]+'(今天)':dn[d];
+    if(d===S.day)b.classList.add('active');
+    b.onclick=()=>{S.day=d;renderDays();renderClasses()};
+    el.appendChild(b);
+  }
+}
+function renderClasses(){
+  const el=document.getElementById('classList');
+  const list=S.classes.filter(c=>c.day==S.day).sort((a,b)=>a.start-b.start);
+  if(!list.length){el.innerHTML='<div style="text-align:center;color:#aaa;padding:16px;font-size:13px;">今天没课~</div>';return;}
+  el.innerHTML=list.map(c=>{
+    const idx=S.classes.indexOf(c);
+    return '<div class="class-item"><span class="del" onclick="delClass('+idx+')">删除</span>'+
+    '<div class="name">'+c.name+'</div><div class="meta">第'+c.start+'-'+c.end+'节 · '+(c.location||'')+'</div></div>';
+  }).join('');
+}
+function openModal(){document.getElementById('classModal').classList.add('show')}
+function closeModal(){document.getElementById('classModal').classList.remove('show')}
+function saveClass(){
+  const name=document.getElementById('clsName').value.trim();
+  if(!name){alert('请输入课程名');return;}
+  S.classes.push({name,location:document.getElementById('clsLocation').value.trim(),
+    day:+document.getElementById('clsDay').value,
+    start:+document.getElementById('clsStart').value||1,
+    end:+document.getElementById('clsEnd').value||1});
+  save();closeModal();renderClasses();
+  ['clsName','clsLocation','clsStart','clsEnd'].forEach(id=>document.getElementById(id).value='');
+}
+function delClass(i){ if(confirm('删除这门课？')){S.classes.splice(i,1);save();renderClasses();} }
+function changeWeek(d){ S.week=Math.max(1,S.week+d);save();renderTop();renderClasses(); }
+
+function renderTodos(){
+  const el=document.getElementById('todoList');
+  if(!S.todos.length){el.innerHTML='<div style="text-align:center;color:#aaa;padding:16px;font-size:13px;">暂无待办</div>';return;}
+  el.innerHTML=S.todos.map((t,i)=>
+    '<div class="todo-item '+(t.done?'done':'')+'"><div class="todo-check" onclick="toggleTodo('+i+')">'+(t.done?'✓':'')+'</div>'+
+    '<div class="todo-text">'+t.text+'</div><div class="todo-del" onclick="delTodo('+i+')">×</div></div>').join('');
+}
+function addTodo(){
+  const inp=document.getElementById('todoInput');const t=inp.value.trim();
+  if(!t)return; S.todos.unshift({text:t,done:false});inp.value='';save();renderTodos();
+}
+function toggleTodo(i){S.todos[i].done=!S.todos[i].done;save();renderTodos();}
+function delTodo(i){S.todos.splice(i,1);save();renderTodos();}
+
+document.querySelectorAll('#partSelector button').forEach(b=>{
+  b.onclick=()=>{
+    document.querySelectorAll('#partSelector button').forEach(x=>x.classList.remove('active'));
+    b.classList.add('active');
+  };
+});
+function renderFitness(){
+  const el=document.getElementById('fitnessList');
+  if(!S.fitness.length){el.innerHTML='<div style="text-align:center;color:#aaa;padding:16px;font-size:13px;">还没有记录</div>';return;}
+  el.innerHTML=S.fitness.slice().reverse().slice(0,20).map(f=>
+    '<div class="fitness-record"><div class="date">'+f.date+'</div><div style="margin-top:4px;">'+f.part+' · '+f.sets+'组'+(f.note?' · '+f.note:'')+'</div></div>').join('');
+}
+function addFitness(){
+  const sel=document.querySelector('#partSelector button.active');
+  if(!sel){alert('请选择训练部位');return;}
+  const today=new Date();
+  S.fitness.push({date:(today.getMonth()+1)+'/'+today.getDate(),part:sel.dataset.part,
+    sets:+document.getElementById('setInput').value||1,note:document.getElementById('noteInput').value.trim()});
+  save();renderFitness();
+  document.getElementById('setInput').value='';document.getElementById('noteInput').value='';
+}
+
+function startPet(){ if(window.Android)Android.startFloatPet(); alert('桌宠已开启！退到桌面看看~'); }
+function stopPet(){ if(window.Android)Android.stopFloatPet(); alert('桌宠已关闭'); }
+
+function renderStats(){
+  document.getElementById('statClass').textContent=S.classes.length+'门';
+  document.getElementById('statTodo').textContent=S.todos.filter(t=>t.done).length+'项';
+  document.getElementById('statFitness').textContent=S.fitness.length+'次';
+}
+
+renderTop();renderDays();renderClasses();renderTodos();renderFitness();renderStats();
+</script>
+</body>
+</html>
